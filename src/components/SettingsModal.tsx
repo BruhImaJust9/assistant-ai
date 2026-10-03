@@ -1,8 +1,8 @@
-// Settings modal — user preferences and account management.
+// Settings modal — user preferences, API key setup, and account management.
 
 import { useState } from 'react';
-import { Zap, Keyboard, User, LogOut } from 'lucide-react';
-import { Modal, Toggle } from '@/components/ui';
+import { Zap, Keyboard, User, LogOut, Key, ExternalLink, Check } from 'lucide-react';
+import { Modal, Toggle, Badge } from '@/components/ui';
 import { useAuth } from '@/lib/auth';
 import { getAvailableModels, getDefaultModelId } from '@/config/models';
 
@@ -17,8 +17,15 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
   const [streaming, setStreaming] = useState(true);
   const [webSearchDefault, setWebSearchDefault] = useState(false);
   const [defaultModel, setDefaultModel] = useState(getDefaultModelId());
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   const models = getAvailableModels();
+
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedKey(label);
+    setTimeout(() => setCopiedKey(null), 1600);
+  };
 
   return (
     <Modal open={open} onClose={onClose} title="Settings" width="md">
@@ -65,6 +72,94 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
               </option>
             ))}
           </select>
+        </section>
+
+        {/* API Keys */}
+        <section>
+          <div className="mb-2 flex items-center gap-2 text-2xs font-semibold uppercase tracking-wider text-ink-400">
+            <Key size={13} /> API Keys
+          </div>
+          <div className="rounded-lg border border-white/[0.07] bg-ink-850/60 p-3.5 space-y-3">
+            <p className="text-sm text-ink-200 leading-relaxed">
+              Nova uses OpenAI for chat responses and Tavily for web search. If the built-in keys run out of quota,
+              you can add your own to get real AI responses. Keys are stored as server secrets and never appear in the browser.
+            </p>
+
+            <div className="space-y-2.5">
+              {/* OpenAI */}
+              <div className="rounded-lg border border-white/[0.06] bg-ink-900/40 p-3">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-sm font-medium text-ink-100">OpenAI (Chat)</span>
+                  <Badge variant="error">No quota</Badge>
+                </div>
+                <p className="text-2xs text-ink-400 mb-2">
+                  Used for all chat responses. Get a key from the OpenAI dashboard.
+                </p>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 truncate rounded-md bg-ink-950/60 px-2.5 py-1.5 text-2xs text-ink-300 font-mono">
+                    OPENAI_API_KEY
+                  </code>
+                  <button
+                    type="button"
+                    onClick={() => copyToClipboard('OPENAI_API_KEY', 'openai')}
+                    className="inline-flex items-center gap-1 rounded-md bg-white/[0.06] px-2 py-1.5 text-2xs font-medium text-ink-200 hover:bg-white/[0.1]"
+                  >
+                    {copiedKey === 'openai' ? <Check size={11} className="text-accent-400" /> : null}
+                    Copy name
+                  </button>
+                  <a
+                    href="https://platform.openai.com/api-keys"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 rounded-md bg-brand-500/10 px-2 py-1.5 text-2xs font-medium text-brand-300 hover:bg-brand-500/20"
+                  >
+                    Get key <ExternalLink size={11} />
+                  </a>
+                </div>
+              </div>
+
+              {/* Tavily */}
+              <div className="rounded-lg border border-white/[0.06] bg-ink-900/40 p-3">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-sm font-medium text-ink-100">Tavily (Web Search)</span>
+                  <Badge variant="error">Invalid</Badge>
+                </div>
+                <p className="text-2xs text-ink-400 mb-2">
+                  Used for real-time web search results. Get a key from the Tavily dashboard.
+                </p>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 truncate rounded-md bg-ink-950/60 px-2.5 py-1.5 text-2xs text-ink-300 font-mono">
+                    TAVILY_API_KEY
+                  </code>
+                  <button
+                    type="button"
+                    onClick={() => copyToClipboard('TAVILY_API_KEY', 'tavily')}
+                    className="inline-flex items-center gap-1 rounded-md bg-white/[0.06] px-2 py-1.5 text-2xs font-medium text-ink-200 hover:bg-white/[0.1]"
+                  >
+                    {copiedKey === 'tavily' ? <Check size={11} className="text-accent-400" /> : null}
+                    Copy name
+                  </button>
+                  <a
+                    href="https://tavily.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 rounded-md bg-brand-500/10 px-2 py-1.5 text-2xs font-medium text-brand-300 hover:bg-brand-500/20"
+                  >
+                    Get key <ExternalLink size={11} />
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-lg bg-brand-500/5 border border-brand-400/10 p-3">
+              <p className="text-2xs text-ink-300 leading-relaxed">
+                <span className="font-semibold text-brand-300">How to add your keys:</span> In your Supabase project
+                dashboard, go to <span className="text-ink-100">Project Settings → Edge Functions → Secrets</span>,
+                then add each secret with the name shown above and your API key as the value. After adding keys,
+                redeploy the edge functions for them to take effect.
+              </p>
+            </div>
+          </div>
         </section>
 
         {/* Preferences */}

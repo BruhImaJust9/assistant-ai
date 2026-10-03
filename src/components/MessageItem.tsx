@@ -205,10 +205,16 @@ export function MessageItem({ message, onEdit, isEditing }: MessageItemProps) {
 
 function ThinkingDots() {
   return (
-    <div className="flex items-center gap-1.5 py-0.5">
-      <span className="h-2 w-2 animate-pulse-soft rounded-full bg-brand-400" style={{ animationDelay: '0ms' }} />
-      <span className="h-2 w-2 animate-pulse-soft rounded-full bg-brand-400" style={{ animationDelay: '200ms' }} />
-      <span className="h-2 w-2 animate-pulse-soft rounded-full bg-brand-400" style={{ animationDelay: '400ms' }} />
+    <div className="flex flex-col gap-2 py-1">
+      <div className="flex items-center gap-1.5">
+        <span className="h-2 w-2 animate-pulse-soft rounded-full bg-brand-400" style={{ animationDelay: '0ms' }} />
+        <span className="h-2 w-2 animate-pulse-soft rounded-full bg-brand-400" style={{ animationDelay: '200ms' }} />
+        <span className="h-2 w-2 animate-pulse-soft rounded-full bg-brand-400" style={{ animationDelay: '400ms' }} />
+        <span className="ml-2 text-2xs text-ink-400 animate-pulse-soft">Thinking…</span>
+      </div>
+      <div className="h-1 w-40 overflow-hidden rounded-full bg-white/[0.06]">
+        <div className="h-full w-1/2 animate-shimmer rounded-full bg-gradient-to-r from-transparent via-brand-400/60 to-transparent" />
+      </div>
     </div>
   );
 }
