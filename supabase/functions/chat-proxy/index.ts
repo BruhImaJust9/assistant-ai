@@ -1,6 +1,6 @@
 // Edge function: chat-proxy
 // Proxies chat completion requests to OpenAI, keeping the API key server-side.
-// Maps Nova model IDs to real OpenAI model names. Streams via SSE.
+// Maps Nova model IDs to real OpenAI model names. Streams via SSE. Handles CORS.
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

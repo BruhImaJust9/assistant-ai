@@ -81,19 +81,20 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
           </div>
           <div className="rounded-lg border border-white/[0.07] bg-ink-850/60 p-3.5 space-y-3">
             <p className="text-sm text-ink-200 leading-relaxed">
-              Nova uses OpenAI for chat responses and Tavily for web search. If the built-in keys run out of quota,
-              you can add your own to get real AI responses. Keys are stored as server secrets and never appear in the browser.
+              Nova uses OpenAI for chat responses and image generation, and Tavily for web search. Without keys
+              configured, Nova falls back to built-in mock responses. Add your own keys to get real AI responses,
+              real web search, and real AI-generated images. Keys are stored as server secrets and never appear in the browser.
             </p>
 
             <div className="space-y-2.5">
               {/* OpenAI */}
               <div className="rounded-lg border border-white/[0.06] bg-ink-900/40 p-3">
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-sm font-medium text-ink-100">OpenAI (Chat)</span>
-                  <Badge variant="error">No quota</Badge>
+                  <span className="text-sm font-medium text-ink-100">OpenAI (Chat + Images)</span>
+                  <Badge variant="error">Not configured</Badge>
                 </div>
                 <p className="text-2xs text-ink-400 mb-2">
-                  Used for all chat responses. Get a key from the OpenAI dashboard.
+                  Used for all chat responses (GPT-4o) and image generation (DALL-E 3). Get a key from the OpenAI dashboard.
                 </p>
                 <div className="flex items-center gap-2">
                   <code className="flex-1 truncate rounded-md bg-ink-950/60 px-2.5 py-1.5 text-2xs text-ink-300 font-mono">

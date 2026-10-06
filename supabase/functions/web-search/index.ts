@@ -1,5 +1,5 @@
 // Edge function: web-search
-// Proxies web search requests to Tavily, keeping the API key server-side.
+// Proxies web search requests to Tavily, keeping the API key server-side. Handles CORS.
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
