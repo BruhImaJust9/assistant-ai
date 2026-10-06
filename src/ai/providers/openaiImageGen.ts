@@ -1,10 +1,8 @@
 // OpenAI DALL-E 3 image generation provider — routes through a Supabase Edge
-// Function (image-gen) that holds the API key server-side. Falls back to the
-// mock provider when the backend is unavailable.
+// Function (image-gen) that holds the API key server-side.
 
 import type { GeneratedImage } from '@/types';
-import type { AspectRatio, ImageGenProvider, ImageGenResult, ImageStyle } from '@/ai/types';
-import { mockImageGenProvider } from '@/ai/providers/mockImageGen';
+import type { ImageGenProvider, ImageGenResult } from '@/ai/types';
 import { uid } from '@/utils';
 
 function proxyUrl(): string {
@@ -35,14 +33,17 @@ export const openaiImageGenProvider: ImageGenProvider = {
         }),
       });
 
+      const data = (await res.json().catch(() => ({}))) as {
+        images?: { url: string; prompt: string }[];
+        error?: string;
+      };
       if (!res.ok) {
-        return mockImageGenProvider.generate(req);
+        return { images: [], error: data.error ?? `Image service request failed (${res.status}).` };
       }
 
-      const data = await res.json();
-      const rawImages = (data.images ?? []) as { url: string; prompt: string }[];
+      const rawImages = data.images ?? [];
       if (rawImages.length === 0) {
-        return mockImageGenProvider.generate(req);
+        return { images: [], error: 'The image service returned no images.' };
       }
 
       const images: GeneratedImage[] = rawImages.map((img) => ({
@@ -53,8 +54,9 @@ export const openaiImageGenProvider: ImageGenProvider = {
       }));
 
       return { images };
-    } catch {
-      return mockImageGenProvider.generate(req);
+    } catch (err) {
+      if ((err as Error).name === 'AbortError') return { images: [] };
+      return { images: [], error: `Unable to reach the image service: ${(err as Error).message || 'network error'}` };
     }
   },
 };

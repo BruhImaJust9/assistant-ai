@@ -1,9 +1,7 @@
 // Tavily web search provider — routes through a Supabase Edge Function
-// (web-search) that holds the API key server-side. Falls back to mock
-// results when the backend is unavailable.
+// (web-search) that holds the API key server-side.
 
 import type { WebSearchProvider, WebSearchResult } from '@/ai/types';
-import { mockWebSearchProvider } from '@/ai/providers/mockWebSearch';
 
 function proxyUrl(): string {
   return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/web-search`;
@@ -28,18 +26,22 @@ export const tavilyWebSearchProvider: WebSearchProvider = {
         body: JSON.stringify({ query }),
       });
 
+      const data = (await res.json().catch(() => ({}))) as {
+        results?: WebSearchResult[];
+        error?: string;
+      };
       if (!res.ok) {
-        return mockWebSearchProvider.search(query, signal);
+        throw new Error(data.error ?? `Web search request failed (${res.status}).`);
       }
 
-      const data = await res.json();
-      const results = (data.results ?? []) as WebSearchResult[];
+      const results = data.results ?? [];
       if (results.length === 0) {
-        return mockWebSearchProvider.search(query, signal);
+        throw new Error('The web search service returned no results.');
       }
       return results;
-    } catch {
-      return mockWebSearchProvider.search(query, signal);
+    } catch (err) {
+      if ((err as Error).name === 'AbortError') return [];
+      throw err;
     }
   },
 };

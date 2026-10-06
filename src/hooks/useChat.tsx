@@ -130,6 +130,9 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             style: 'auto',
             signal: controller.signal,
           });
+          if (result.error) {
+            throw new Error(result.error);
+          }
           const images: GeneratedImage[] = result.images;
           const textPart: MessagePart = {
             type: 'text',

@@ -1,6 +1,6 @@
 // Empty state shown when a conversation has no messages.
 
-import { Sparkles, Globe, Image, FileText, Code2 } from 'lucide-react';
+import { Sparkles, Globe, Image, Code as Code2 } from 'lucide-react';
 
 const SUGGESTIONS = [
   { icon: Sparkles, title: 'Explain a concept', prompt: 'Explain how transformers work in machine learning, in simple terms.' },

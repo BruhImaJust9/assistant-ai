@@ -16,9 +16,7 @@ import { PROVIDERS } from '@/config/models';
 
 import { mockChatProvider } from '@/ai/providers/mockChat';
 import { mockFileAnalysisProvider } from '@/ai/providers/mockFileAnalysis';
-import { mockImageGenProvider } from '@/ai/providers/mockImageGen';
 import { openaiImageGenProvider } from '@/ai/providers/openaiImageGen';
-import { mockWebSearchProvider } from '@/ai/providers/mockWebSearch';
 import { tavilyWebSearchProvider } from '@/ai/providers/tavilyWebSearch';
 import { openaiChatProvider } from '@/ai/providers/openaiProvider';
 

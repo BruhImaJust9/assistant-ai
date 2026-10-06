@@ -2,11 +2,7 @@
 //
 // Routes requests through a Supabase Edge Function (chat-proxy) that holds
 // the API key server-side. The frontend never sees the key.
-// Falls back to the mock provider when the backend is unavailable so the
-// UX stays functional without a working API key.
-
 import type { ChatProvider, ChatRequest, ChatStreamChunk } from '@/ai/types';
-import { mockChatProvider } from '@/ai/providers/mockChat';
 
 function proxyUrl(): string {
   return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-proxy`;
@@ -35,8 +31,8 @@ export const openaiChatProvider: ChatProvider = {
       });
 
       if (!res.ok || !res.body) {
-        // Fall back to mock provider — the API key may not have quota.
-        await mockChatProvider.streamChat(req, onChunk);
+        const detail = await res.text().catch(() => '');
+        onChunk({ error: formatProviderError(res.status, detail) });
         return;
       }
 
@@ -72,15 +68,25 @@ export const openaiChatProvider: ChatProvider = {
         }
       }
       if (!receivedAnyDelta) {
-        // Stream ended without content — fall back to mock.
-        await mockChatProvider.streamChat(req, onChunk);
+        onChunk({ error: 'The AI service returned an empty response.' });
         return;
       }
       onChunk({ done: true });
     } catch (err) {
       if ((err as Error).name === 'AbortError') return;
-      // Network error — fall back to mock.
-      await mockChatProvider.streamChat(req, onChunk);
+      onChunk({ error: `Unable to reach the AI service: ${(err as Error).message || 'network error'}` });
     }
   },
 };
+
+function formatProviderError(status: number, detail: string): string {
+  try {
+    const parsed = JSON.parse(detail) as { error?: string | { message?: string } };
+    const error = parsed.error;
+    const message = typeof error === 'string' ? error : error?.message;
+    if (message) return message;
+  } catch {
+    // The service may return a non-JSON error body.
+  }
+  return `AI service request failed (${status}).`;
+}

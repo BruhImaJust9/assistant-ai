@@ -746,7 +746,7 @@ function buildContextualResponse(prompt: string, tools: ToolKind[], history: Cha
 
   // Lists / brainstorming
   if (/list|ideas|brainstorm|suggest|recommend|options|ways to|tips/i.test(trimmed)) {
-    return `Here are some ideas:\n\n${buildList(trimmed)}\n\nWould you like me to expand on any of these, or explore a different direction?`;
+    return `Here are some ideas:\n\n${buildList()}\n\nWould you like me to expand on any of these, or explore a different direction?`;
   }
 
   // Questions — broad detection including "explain", "describe", "tell me", "what are your", etc.
@@ -1005,7 +1005,7 @@ The key points to keep in mind are clarity, purpose, and audience. When all thre
 I'd be happy to refine this further based on your feedback.`;
 }
 
-function buildList(prompt: string): string {
+function buildList(): string {
   const allItems = [
     'Start with the simplest version that could possibly work, then iterate.',
     'Gather feedback from real users early and often — assumptions are expensive.',

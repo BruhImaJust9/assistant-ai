@@ -1,16 +1,7 @@
 // A single message in the conversation, with role styling and actions.
 
 import { useState } from 'react';
-import {
-  Copy,
-  Check,
-  RefreshCw,
-  Pencil,
-  AlertTriangle,
-  WifiOff,
-  Gauge,
-  X,
-} from 'lucide-react';
+import { Copy, Check, RefreshCw, Pencil, TriangleAlert as AlertTriangle, WifiOff, Gauge, X } from 'lucide-react';
 import type { Message } from '@/types';
 import { Markdown } from '@/components/Markdown';
 import { Citations } from '@/components/Citations';
@@ -28,7 +19,7 @@ interface MessageItemProps {
   isEditing?: boolean;
 }
 
-export function MessageItem({ message, onEdit, isEditing }: MessageItemProps) {
+export function MessageItem({ message, onEdit }: MessageItemProps) {
   const { regenerate, isStreaming } = useChat();
   const { patchMessage } = useStore();
   const [copied, setCopied] = useState(false);
