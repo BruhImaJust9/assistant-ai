@@ -3,26 +3,15 @@
 // Routes requests through a Supabase Edge Function (chat-proxy) that holds
 // the API key server-side. The frontend never sees the key.
 import type { ChatProvider, ChatRequest, ChatStreamChunk } from '@/ai/types';
-
-function proxyUrl(): string {
-  return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-proxy`;
-}
-
-function authHeaders(): Record<string, string> {
-  return {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-    apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-  };
-}
+import { edgeFunctionUrl, edgeFunctionHeaders } from '@/lib/edgeConfig';
 
 export const openaiChatProvider: ChatProvider = {
   id: 'openai-chat',
   async streamChat(req: ChatRequest, onChunk: (c: ChatStreamChunk) => void): Promise<void> {
     try {
-      const res = await fetch(proxyUrl(), {
+      const res = await fetch(edgeFunctionUrl('chat-proxy'), {
         method: 'POST',
-        headers: authHeaders(),
+        headers: edgeFunctionHeaders(),
         signal: req.signal,
         body: JSON.stringify({
           model: req.model.id,
@@ -84,9 +73,17 @@ function formatProviderError(status: number, detail: string): string {
     const parsed = JSON.parse(detail) as { error?: string | { message?: string } };
     const error = parsed.error;
     const message = typeof error === 'string' ? error : error?.message;
-    if (message) return message;
+    if (message) {
+      if (status === 429 || message.includes('quota') || message.includes('credits') || message.includes('billing')) {
+        return `OpenAI credits exhausted. Add billing credits at platform.openai.com to enable chat responses.`;
+      }
+      return message;
+    }
   } catch {
     // The service may return a non-JSON error body.
+  }
+  if (status === 404) {
+    return 'Unable to reach the AI service. Please check your connection and try again.';
   }
   return `AI service request failed (${status}).`;
 }

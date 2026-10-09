@@ -4,26 +4,15 @@
 import type { GeneratedImage } from '@/types';
 import type { ImageGenProvider, ImageGenResult } from '@/ai/types';
 import { uid } from '@/utils';
-
-function proxyUrl(): string {
-  return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/image-gen`;
-}
-
-function authHeaders(): Record<string, string> {
-  return {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-    apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-  };
-}
+import { edgeFunctionUrl, edgeFunctionHeaders } from '@/lib/edgeConfig';
 
 export const openaiImageGenProvider: ImageGenProvider = {
   id: 'openai-image-gen',
   async generate(req): Promise<ImageGenResult> {
     try {
-      const res = await fetch(proxyUrl(), {
+      const res = await fetch(edgeFunctionUrl('image-gen'), {
         method: 'POST',
-        headers: authHeaders(),
+        headers: edgeFunctionHeaders(),
         signal: req.signal,
         body: JSON.stringify({
           prompt: req.prompt,

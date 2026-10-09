@@ -19,16 +19,6 @@ const SIZE_MAP: Record<string, string> = {
   "3:2": "1024x1024",
 };
 
-const STYLE_MAP: Record<string, "natural" | "vivid"> = {
-  auto: "vivid",
-  photoreal: "natural",
-  illustration: "vivid",
-  "3d": "vivid",
-  anime: "vivid",
-  minimal: "natural",
-  cinematic: "vivid",
-};
-
 interface GenRequest {
   prompt: string;
   aspectRatio?: string;
@@ -61,7 +51,6 @@ Deno.serve(async (req: Request) => {
     }
 
     const size = SIZE_MAP[aspectRatio] ?? "1024x1024";
-    const openaiStyle = STYLE_MAP[style] ?? "vivid";
 
     // DALL-E 3 supports 1 image per request; for count > 1 we call multiple times.
     const count = Math.min(body.count ?? 1, 4);
@@ -78,8 +67,6 @@ Deno.serve(async (req: Request) => {
           n: 1,
           size,
           quality: "standard",
-          style: openaiStyle,
-          response_format: "url",
         }),
       })
     );

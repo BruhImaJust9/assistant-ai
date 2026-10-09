@@ -19,6 +19,7 @@ import type {
   ToolKind,
 } from '@/types';
 import type { ModelConfig } from '@/config/models';
+import type { WebSearchResult } from '@/ai/types';
 import { registry } from '@/ai/registry';
 import { useStore } from '@/store/conversations';
 import { uid } from '@/utils';
@@ -105,9 +106,12 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       try {
         // 3. Run web search if the tool is active.
         let citations: Citation[] = [];
+        let searchAnswer: string | null = null;
         if (tools.includes('web-search')) {
           await store.patchMessage(assistantId, { status: 'streaming' });
           const searchResults = await registry.webSearch().search(text, controller.signal);
+          const resultsWithAnswer = searchResults as WebSearchResult[] & { answer?: string | null };
+          searchAnswer = resultsWithAnswer.answer ?? null;
           citations = searchResults.map((r) => ({
             id: uid('cite'),
             url: r.url,
@@ -212,11 +216,19 @@ export function ChatProvider({ children }: { children: ReactNode }) {
               store.patchMessage(assistantId, { parts, status: 'streaming' });
             }
             if (chunk.error) {
-              store.patchMessage(assistantId, {
-                status: chunk.error.includes('rate') ? 'rate-limited' : 'error',
-                error: chunk.error,
-                parts: citations.length ? [{ type: 'citations', citations }] : [],
-              });
+              if (searchAnswer && citations.length > 0) {
+                const parts: MessagePart[] = [
+                  { type: 'citations', citations },
+                  { type: 'text', text: searchAnswer },
+                ];
+                store.patchMessage(assistantId, { parts, status: 'complete' });
+              } else {
+                store.patchMessage(assistantId, {
+                  status: chunk.error.includes('rate') || chunk.error.includes('credits') ? 'rate-limited' : 'error',
+                  error: chunk.error,
+                  parts: citations.length ? [{ type: 'citations', citations }] : [],
+                });
+              }
             }
             if (chunk.done && !chunk.error) {
               const parts: MessagePart[] = [];
@@ -268,8 +280,11 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       abortRef.current = controller;
       try {
         let citations: Citation[] = [];
+        let searchAnswer: string | null = null;
         if (userMsg.tools?.includes('web-search')) {
           const searchResults = await registry.webSearch().search(text, controller.signal);
+          const resultsWithAnswer = searchResults as WebSearchResult[] & { answer?: string | null };
+          searchAnswer = resultsWithAnswer.answer ?? null;
           citations = searchResults.map((r) => ({
             id: uid('cite'),
             url: r.url,
@@ -321,10 +336,18 @@ export function ChatProvider({ children }: { children: ReactNode }) {
               store.patchMessage(messageId, { parts, status: 'streaming' });
             }
             if (chunk.error) {
-              store.patchMessage(messageId, {
-                status: 'error',
-                error: chunk.error,
-              });
+              if (searchAnswer && citations.length > 0) {
+                const parts: MessagePart[] = [
+                  { type: 'citations', citations },
+                  { type: 'text', text: searchAnswer },
+                ];
+                store.patchMessage(messageId, { parts, status: 'complete' });
+              } else {
+                store.patchMessage(messageId, {
+                  status: 'error',
+                  error: chunk.error,
+                });
+              }
             }
             if (chunk.done && !chunk.error) {
               const parts: MessagePart[] = [];

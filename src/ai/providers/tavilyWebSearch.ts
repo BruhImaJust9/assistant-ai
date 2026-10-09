@@ -2,32 +2,27 @@
 // (web-search) that holds the API key server-side.
 
 import type { WebSearchProvider, WebSearchResult } from '@/ai/types';
+import { edgeFunctionUrl, edgeFunctionHeaders } from '@/lib/edgeConfig';
 
-function proxyUrl(): string {
-  return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/web-search`;
-}
-
-function authHeaders(): Record<string, string> {
-  return {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-    apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-  };
+export interface WebSearchResponse {
+  results: WebSearchResult[];
+  answer?: string | null;
 }
 
 export const tavilyWebSearchProvider: WebSearchProvider = {
   id: 'tavily-web-search',
   async search(query: string, signal?: AbortSignal): Promise<WebSearchResult[]> {
     try {
-      const res = await fetch(proxyUrl(), {
+      const res = await fetch(edgeFunctionUrl('web-search'), {
         method: 'POST',
-        headers: authHeaders(),
+        headers: edgeFunctionHeaders(),
         signal,
         body: JSON.stringify({ query }),
       });
 
       const data = (await res.json().catch(() => ({}))) as {
         results?: WebSearchResult[];
+        answer?: string | null;
         error?: string;
       };
       if (!res.ok) {
@@ -38,6 +33,8 @@ export const tavilyWebSearchProvider: WebSearchProvider = {
       if (results.length === 0) {
         throw new Error('The web search service returned no results.');
       }
+      // Stash the Tavily answer on the results array for the chat orchestrator.
+      (results as WebSearchResult[] & { answer?: string | null }).answer = data.answer ?? null;
       return results;
     } catch (err) {
       if ((err as Error).name === 'AbortError') return [];
