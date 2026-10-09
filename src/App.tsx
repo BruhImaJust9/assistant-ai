@@ -1,9 +1,9 @@
 // Nova — application root. Wires providers, responsive 3-column layout,
-// settings modal, and auth gate.
+// settings modal.
 
 import { useEffect, useState, useCallback } from 'react';
 import { Menu, PanelRightOpen } from 'lucide-react';
-import { AuthProvider, useAuth } from '@/lib/auth';
+import { AuthProvider } from '@/lib/auth';
 import { StoreProvider, useStore } from '@/store/conversations';
 import { ChatProvider, useChat } from '@/hooks/useChat';
 import { Sidebar } from '@/components/Sidebar';
@@ -11,13 +11,11 @@ import { ChatView } from '@/components/ChatView';
 import { Composer } from '@/components/Composer';
 import { ToolsPanel } from '@/components/ToolsPanel';
 import { SettingsModal } from '@/components/SettingsModal';
-import { AuthScreen } from '@/components/AuthScreen';
-import { IconButton, Tooltip, Spinner } from '@/components/ui';
+import { IconButton, Tooltip } from '@/components/ui';
 import { getModel, getDefaultModelId } from '@/config/models';
 import type { FileAttachment, ToolKind } from '@/types';
 
 function NovaShell() {
-  const { user, loading, localMode } = useAuth();
   const store = useStore();
   const chat = useChat();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -29,10 +27,10 @@ function NovaShell() {
 
   // Auto-create a conversation on first load.
   useEffect(() => {
-    if ((user || localMode) && store.conversations.length === 0 && !store.activeId) {
+    if (store.conversations.length === 0 && !store.activeId) {
       store.newConversation();
     }
-  }, [user, localMode, store]);
+  }, [store]);
 
   // Load messages when active conversation changes.
   useEffect(() => {
@@ -127,19 +125,6 @@ function NovaShell() {
   const handleCancelEdit = useCallback(() => {
     setEditState(null);
   }, []);
-
-  // Auth gate: show sign-in screen if Supabase is configured but no session.
-  if (!localMode && loading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-ink-950">
-        <Spinner size={28} className="text-brand-400" />
-      </div>
-    );
-  }
-
-  if (!localMode && !user) {
-    return <AuthScreen />;
-  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-ink-950">

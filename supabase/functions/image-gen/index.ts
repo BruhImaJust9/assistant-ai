@@ -1,6 +1,7 @@
 // Edge function: image-gen
 // Proxies image generation requests to OpenAI's DALL-E 3 API, keeping the
 // API key server-side. Falls back gracefully when the key is not configured.
+// No JWT verification required — accessible with the anon key.
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

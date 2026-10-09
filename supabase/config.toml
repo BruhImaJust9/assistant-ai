@@ -1,8 +1,8 @@
 [functions.chat-proxy]
-verify_jwt = true
+verify_jwt = false
 
 [functions.web-search]
-verify_jwt = true
+verify_jwt = false
 
 [functions.image-gen]
-verify_jwt = true
+verify_jwt = false

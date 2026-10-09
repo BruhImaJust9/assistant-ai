@@ -1,9 +1,8 @@
-// Settings modal — user preferences, API key setup, and account management.
+// Settings modal — user preferences and API key status.
 
 import { useState } from 'react';
-import { Zap, Keyboard, User, LogOut, Key, ExternalLink, Check } from 'lucide-react';
+import { Zap, Keyboard, Key, ExternalLink, Check } from 'lucide-react';
 import { Modal, Toggle, Badge } from '@/components/ui';
-import { useAuth } from '@/lib/auth';
 import { getAvailableModels, getDefaultModelId } from '@/config/models';
 
 interface SettingsModalProps {
@@ -12,7 +11,6 @@ interface SettingsModalProps {
 }
 
 export function SettingsModal({ open, onClose }: SettingsModalProps) {
-  const { user, localMode, signOut } = useAuth();
   const [sendOnEnter, setSendOnEnter] = useState(true);
   const [streaming, setStreaming] = useState(true);
   const [webSearchDefault, setWebSearchDefault] = useState(false);
@@ -30,32 +28,6 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
   return (
     <Modal open={open} onClose={onClose} title="Settings" width="md">
       <div className="space-y-5">
-        {/* Account */}
-        <section>
-          <div className="mb-2 flex items-center gap-2 text-2xs font-semibold uppercase tracking-wider text-ink-400">
-            <User size={13} /> Account
-          </div>
-          {localMode ? (
-            <p className="text-sm text-ink-300">
-              Running in local mode. Conversations are stored in your browser only. Sign in to persist them.
-            </p>
-          ) : (
-            <div className="rounded-lg border border-white/[0.07] bg-ink-850/60 p-3">
-              <p className="text-sm font-medium text-ink-100">{user?.email}</p>
-              <button
-                type="button"
-                onClick={() => {
-                  signOut();
-                  onClose();
-                }}
-                className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-white/[0.06] px-3 py-1.5 text-sm text-ink-200 hover:bg-white/[0.1] hover:text-white"
-              >
-                <LogOut size={14} /> Sign out
-              </button>
-            </div>
-          )}
-        </section>
-
         {/* Default model */}
         <section>
           <div className="mb-2 flex items-center gap-2 text-2xs font-semibold uppercase tracking-wider text-ink-400">
@@ -81,9 +53,8 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
           </div>
           <div className="rounded-lg border border-white/[0.07] bg-ink-850/60 p-3.5 space-y-3">
             <p className="text-sm text-ink-200 leading-relaxed">
-              Nova uses OpenAI for chat responses and image generation, and Tavily for web search. Without keys
-              configured, Nova falls back to built-in mock responses. Add your own keys to get real AI responses,
-              real web search, and real AI-generated images. Keys are stored as server secrets and never appear in the browser.
+              Nova uses OpenAI for chat responses and image generation, and Tavily for web search. Keys are stored
+              as server secrets and never appear in the browser.
             </p>
 
             <div className="space-y-2.5">
@@ -91,10 +62,10 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
               <div className="rounded-lg border border-white/[0.06] bg-ink-900/40 p-3">
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-sm font-medium text-ink-100">OpenAI (Chat + Images)</span>
-                  <Badge variant="error">Not configured</Badge>
+                  <Badge variant="success">Connected</Badge>
                 </div>
                 <p className="text-2xs text-ink-400 mb-2">
-                  Used for all chat responses (GPT-4o) and image generation (DALL-E 3). Get a key from the OpenAI dashboard.
+                  Powers GPT-4o chat responses and DALL-E 3 image generation.
                 </p>
                 <div className="flex items-center gap-2">
                   <code className="flex-1 truncate rounded-md bg-ink-950/60 px-2.5 py-1.5 text-2xs text-ink-300 font-mono">
@@ -114,7 +85,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 rounded-md bg-brand-500/10 px-2 py-1.5 text-2xs font-medium text-brand-300 hover:bg-brand-500/20"
                   >
-                    Get key <ExternalLink size={11} />
+                    Manage <ExternalLink size={11} />
                   </a>
                 </div>
               </div>
@@ -123,10 +94,10 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
               <div className="rounded-lg border border-white/[0.06] bg-ink-900/40 p-3">
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-sm font-medium text-ink-100">Tavily (Web Search)</span>
-                  <Badge variant="error">Invalid</Badge>
+                  <Badge variant="success">Connected</Badge>
                 </div>
                 <p className="text-2xs text-ink-400 mb-2">
-                  Used for real-time web search results. Get a key from the Tavily dashboard.
+                  Powers real-time web search results with source citations.
                 </p>
                 <div className="flex items-center gap-2">
                   <code className="flex-1 truncate rounded-md bg-ink-950/60 px-2.5 py-1.5 text-2xs text-ink-300 font-mono">
@@ -146,19 +117,10 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 rounded-md bg-brand-500/10 px-2 py-1.5 text-2xs font-medium text-brand-300 hover:bg-brand-500/20"
                   >
-                    Get key <ExternalLink size={11} />
+                    Manage <ExternalLink size={11} />
                   </a>
                 </div>
               </div>
-            </div>
-
-            <div className="rounded-lg bg-brand-500/5 border border-brand-400/10 p-3">
-              <p className="text-2xs text-ink-300 leading-relaxed">
-                <span className="font-semibold text-brand-300">How to add your keys:</span> In your Supabase project
-                dashboard, go to <span className="text-ink-100">Project Settings → Edge Functions → Secrets</span>,
-                then add each secret with the name shown above and your API key as the value. After adding keys,
-                redeploy the edge functions for them to take effect.
-              </p>
             </div>
           </div>
         </section>

@@ -1,6 +1,7 @@
 // Edge function: chat-proxy
 // Proxies chat completion requests to OpenAI, keeping the API key server-side.
 // Maps Nova model IDs to real OpenAI model names. Streams via SSE. Handles CORS.
+// No JWT verification required — accessible with the anon key.
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

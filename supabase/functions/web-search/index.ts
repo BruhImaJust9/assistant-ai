@@ -1,5 +1,6 @@
 // Edge function: web-search
 // Proxies web search requests to Tavily, keeping the API key server-side. Handles CORS.
+// No JWT verification required — accessible with the anon key.
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

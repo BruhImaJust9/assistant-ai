@@ -15,8 +15,7 @@ import {
   MessageSquare,
 } from 'lucide-react';
 import { useStore } from '@/store/conversations';
-import { useAuth } from '@/lib/auth';
-import { cx, dateBucket, timeAgo, truncate } from '@/utils';
+import { cx, dateBucket, timeAgo } from '@/utils';
 import { IconButton, Tooltip } from '@/components/ui';
 import type { Conversation } from '@/types';
 
@@ -36,7 +35,6 @@ export function Sidebar({ collapsed, onToggle, onOpenSettings }: SidebarProps) {
     togglePin,
     removeConversation,
   } = useStore();
-  const { user, localMode, signOut } = useAuth();
   const [query, setQuery] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -180,7 +178,7 @@ export function Sidebar({ collapsed, onToggle, onOpenSettings }: SidebarProps) {
         )}
       </div>
 
-      {/* Footer: profile + settings */}
+      {/* Footer: settings */}
       <div className="border-t border-white/[0.06] p-2">
         <button
           type="button"
@@ -190,27 +188,6 @@ export function Sidebar({ collapsed, onToggle, onOpenSettings }: SidebarProps) {
           <Settings size={16} className="text-ink-300" />
           <span>Settings</span>
         </button>
-        <div className="mt-1 flex items-center gap-2.5 rounded-lg px-2.5 py-2">
-          <Avatar name={user?.email ?? 'Guest'} />
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-ink-100">
-              {localMode ? 'Guest' : user?.email?.split('@')[0] ?? 'User'}
-            </p>
-            <p className="truncate text-2xs text-ink-300">
-              {localMode ? 'Local mode' : truncate(user?.email ?? '', 28)}
-            </p>
-          </div>
-          {!localMode && (
-            <Tooltip label="Sign out">
-              <IconButton
-                icon={<SignOutIcon />}
-                label="Sign out"
-                size="sm"
-                onClick={() => signOut()}
-              />
-            </Tooltip>
-          )}
-        </div>
       </div>
 
       {/* Delete confirmation */}
@@ -332,15 +309,6 @@ function DeleteConfirm({ onCancel, onConfirm }: { onCancel: () => void; onConfir
   );
 }
 
-function Avatar({ name }: { name: string }) {
-  const initials = name.slice(0, 2).toUpperCase();
-  return (
-    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-400 to-brand-600 text-2xs font-semibold text-ink-950">
-      {initials}
-    </div>
-  );
-}
-
 function NovaMark() {
   return (
     <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-ink-800 border border-white/[0.08]">
@@ -352,10 +320,4 @@ function NovaMark() {
   );
 }
 
-function SignOutIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
-    </svg>
-  );
-}
+
