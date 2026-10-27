@@ -2,16 +2,67 @@
 //
 // Routes requests through a Supabase Edge Function (chat-proxy) that holds
 // the API key server-side. The frontend never sees the key.
+//
+// Behaviour:
+//  - Backend configured  -> always talks to the real model. If anything goes
+//    wrong, the user sees the real reason (and a Retry button) instead of a
+//    made-up answer.
+//  - No backend at all (local/demo mode) -> uses the built-in sample replies,
+//    clearly labelled as a demo so nobody mistakes them for a real model.
+
 import type { ChatProvider, ChatRequest, ChatStreamChunk } from '@/ai/types';
-import { edgeFunctionUrl, edgeFunctionHeaders } from '@/lib/edgeConfig';
+import { mockChatProvider } from '@/ai/providers/mockChat';
+import { isSupabaseConfigured } from '@/lib/supabase';
+
+function proxyUrl(): string {
+  return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-proxy`;
+}
+
+function authHeaders(): Record<string, string> {
+  return {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+    apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+  };
+}
+
+const DEMO_NOTICE =
+  '> **Demo mode** — no AI backend is connected, so this is a built-in sample reply, not a real model.\n\n';
+
+/** Turn a failed HTTP response into a short, human-readable message. */
+async function describeFailure(res: Response): Promise<string> {
+  let serverMessage = '';
+  try {
+    const data = await res.json();
+    if (data && typeof data.error === 'string') serverMessage = data.error;
+  } catch {
+    // body was not JSON — fall through to the generic messages below
+  }
+
+  if (res.status === 429) {
+    return 'The AI service is rate limited right now. Please wait a moment and press Retry.';
+  }
+  if (res.status === 401 || res.status === 403) {
+    return 'Your session was not accepted by the AI service. Try signing out and back in.';
+  }
+  if (serverMessage) return serverMessage;
+  return `The AI service returned an error (HTTP ${res.status}). Press Retry, or try again later.`;
+}
 
 export const openaiChatProvider: ChatProvider = {
   id: 'openai-chat',
   async streamChat(req: ChatRequest, onChunk: (c: ChatStreamChunk) => void): Promise<void> {
+    // No backend configured: run the clearly-labelled demo replies.
+    if (!isSupabaseConfigured) {
+      onChunk({ delta: DEMO_NOTICE });
+      await mockChatProvider.streamChat(req, onChunk);
+      return;
+    }
+
     try {
-      const res = await fetch(edgeFunctionUrl('chat-proxy'), {
+      const res = await fetch(proxyUrl(), {
         method: 'POST',
-        headers: edgeFunctionHeaders(),
+        headers: authHeaders(),
         signal: req.signal,
         body: JSON.stringify({
           model: req.model.id,
@@ -20,8 +71,7 @@ export const openaiChatProvider: ChatProvider = {
       });
 
       if (!res.ok || !res.body) {
-        const detail = await res.text().catch(() => '');
-        onChunk({ error: formatProviderError(res.status, detail) });
+        onChunk({ error: await describeFailure(res) });
         return;
       }
 
@@ -41,6 +91,10 @@ export const openaiChatProvider: ChatProvider = {
           if (!trimmed.startsWith('data:')) continue;
           const data = trimmed.slice(5).trim();
           if (data === '[DONE]') {
+            if (!receivedAnyDelta) {
+              onChunk({ error: 'The AI service returned an empty reply. Press Retry.' });
+              return;
+            }
             onChunk({ done: true });
             return;
           }
@@ -56,34 +110,17 @@ export const openaiChatProvider: ChatProvider = {
           }
         }
       }
+
       if (!receivedAnyDelta) {
-        onChunk({ error: 'The AI service returned an empty response.' });
+        onChunk({ error: 'The AI service returned an empty reply. Press Retry.' });
         return;
       }
       onChunk({ done: true });
     } catch (err) {
       if ((err as Error).name === 'AbortError') return;
-      onChunk({ error: `Unable to reach the AI service: ${(err as Error).message || 'network error'}` });
+      onChunk({
+        error: 'Could not reach the AI service. Check your internet connection and press Retry.',
+      });
     }
   },
 };
-
-function formatProviderError(status: number, detail: string): string {
-  try {
-    const parsed = JSON.parse(detail) as { error?: string | { message?: string } };
-    const error = parsed.error;
-    const message = typeof error === 'string' ? error : error?.message;
-    if (message) {
-      if (status === 429 || message.includes('quota') || message.includes('credits') || message.includes('billing')) {
-        return `OpenAI credits exhausted. Add billing credits at platform.openai.com to enable chat responses.`;
-      }
-      return message;
-    }
-  } catch {
-    // The service may return a non-JSON error body.
-  }
-  if (status === 404) {
-    return 'Unable to reach the AI service. Please check your connection and try again.';
-  }
-  return `AI service request failed (${status}).`;
-}
