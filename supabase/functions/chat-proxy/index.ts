@@ -12,6 +12,8 @@ const MODEL_MAP: Record<string, string> = {
   "nova-flash": "llama-3.1-8b-instant",
 };
 
+const SYSTEM_PROMPT = `You are Novi, a warm and practical AI assistant. Be friendly, calm, and encouraging without being overly chatty. Give the clearest useful answer first, then add detail only when it helps. Use plain language, short paragraphs, and compact lists. Ask one focused follow-up question when the request is ambiguous. Never claim to have browsed, completed an action, or verified information unless the conversation provides that evidence. Be honest about uncertainty. When the user asks for code, provide safe, readable code and explain only the important decisions.`;
+
 function json(data: Record<string, unknown>, status = 200): Response {
   return new Response(JSON.stringify(data), {
     status,
@@ -33,9 +35,12 @@ Deno.serve(async (req: Request) => {
     };
     if (!body.model || !Array.isArray(body.messages)) return json({ error: "Invalid chat request." }, 400);
 
-    const messages = body.messages
-      .slice(-8)
-      .map((message) => ({ role: message.role, content: message.content.slice(0, 6000) }));
+    const messages = [
+      { role: "system", content: SYSTEM_PROMPT },
+      ...body.messages
+        .slice(-8)
+        .map((message) => ({ role: message.role, content: message.content.slice(0, 6000) })),
+    ];
     const maxTokens = Math.min(Math.max(body.maxTokens ?? 512, 128), 768);
 
     const groqRes = await fetch(GROQ_URL, {
