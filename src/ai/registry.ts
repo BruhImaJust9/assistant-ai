@@ -1,8 +1,4 @@
 // Provider registry — the single wiring point between the UI and AI backends.
-//
-// To swap a provider, change the implementation returned here. The UI only
-// ever calls `getChatProvider(model)` etc. and never imports a concrete
-// provider directly.
 
 import type {
   ChatProvider,
@@ -13,40 +9,21 @@ import type {
 } from '@/ai/types';
 import type { ModelConfig } from '@/config/models';
 import { PROVIDERS } from '@/config/models';
-
 import { mockChatProvider } from '@/ai/providers/mockChat';
 import { mockFileAnalysisProvider } from '@/ai/providers/mockFileAnalysis';
-import { openaiImageGenProvider } from '@/ai/providers/openaiImageGen';
+import { mockImageGenProvider } from '@/ai/providers/mockImageGen';
 import { tavilyWebSearchProvider } from '@/ai/providers/tavilyWebSearch';
-import { openaiChatProvider } from '@/ai/providers/openaiProvider';
+import { groqChatProvider } from '@/ai/providers/openaiProvider';
 
 function getChatProvider(model: ModelConfig): ChatProvider {
-  switch (model.provider) {
-    case 'openai':
-      return openaiChatProvider;
-    case 'mock':
-    default:
-      return mockChatProvider;
-  }
-}
-
-function getImageGenProvider(): ImageGenProvider {
-  return openaiImageGenProvider;
-}
-
-function getWebSearchProvider(): WebSearchProvider {
-  return tavilyWebSearchProvider;
-}
-
-function getFileAnalysisProvider(): FileAnalysisProvider {
-  return mockFileAnalysisProvider;
+  return model.provider === 'groq' ? groqChatProvider : mockChatProvider;
 }
 
 export const registry: ProviderRegistry = {
   chat: getChatProvider,
-  imageGen: getImageGenProvider,
-  webSearch: getWebSearchProvider,
-  fileAnalysis: getFileAnalysisProvider,
+  imageGen: () => mockImageGenProvider,
+  webSearch: () => tavilyWebSearchProvider,
+  fileAnalysis: () => mockFileAnalysisProvider,
 };
 
 export function isProviderConfigured(providerId: ModelConfig['provider']): boolean {

@@ -1,72 +1,32 @@
-// OpenAI Chat Completions streaming provider.
-//
-// Routes requests through a Supabase Edge Function (chat-proxy) that holds
-// the API key server-side. The frontend never sees the key.
-//
-// Behaviour:
-//  - Backend configured  -> always talks to the real model. If anything goes
-//    wrong, the user sees the real reason (and a Retry button) instead of a
-//    made-up answer.
-//  - No backend at all (local/demo mode) -> uses the built-in sample replies,
-//    clearly labelled as a demo so nobody mistakes them for a real model.
+// Groq chat provider. The API key stays inside the Supabase Edge Function.
 
 import type { ChatProvider, ChatRequest, ChatStreamChunk } from '@/ai/types';
-import { mockChatProvider } from '@/ai/providers/mockChat';
-import { isSupabaseConfigured } from '@/lib/supabase';
+import { edgeFunctionHeaders, edgeFunctionUrl } from '@/lib/edgeConfig';
 
-function proxyUrl(): string {
-  return `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-proxy`;
-}
-
-function authHeaders(): Record<string, string> {
-  return {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-    apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-  };
-}
-
-const DEMO_NOTICE =
-  '> **Demo mode** — no AI backend is connected, so this is a built-in sample reply, not a real model.\n\n';
-
-/** Turn a failed HTTP response into a short, human-readable message. */
 async function describeFailure(res: Response): Promise<string> {
   let serverMessage = '';
   try {
     const data = await res.json();
     if (data && typeof data.error === 'string') serverMessage = data.error;
   } catch {
-    // body was not JSON — fall through to the generic messages below
+    // The service may return a non-JSON error body.
   }
-
-  if (res.status === 429) {
-    return 'The AI service is rate limited right now. Please wait a moment and press Retry.';
-  }
-  if (res.status === 401 || res.status === 403) {
-    return 'Your session was not accepted by the AI service. Try signing out and back in.';
-  }
-  if (serverMessage) return serverMessage;
-  return `The AI service returned an error (HTTP ${res.status}). Press Retry, or try again later.`;
+  if (res.status === 429) return 'The free AI tier is rate limited right now. Please wait a moment and retry.';
+  return serverMessage || `The AI service returned an error (HTTP ${res.status}).`;
 }
 
-export const openaiChatProvider: ChatProvider = {
-  id: 'openai-chat',
-  async streamChat(req: ChatRequest, onChunk: (c: ChatStreamChunk) => void): Promise<void> {
-    // No backend configured: run the clearly-labelled demo replies.
-    if (!isSupabaseConfigured) {
-      onChunk({ delta: DEMO_NOTICE });
-      await mockChatProvider.streamChat(req, onChunk);
-      return;
-    }
-
+export const groqChatProvider: ChatProvider = {
+  id: 'groq-chat',
+  async streamChat(req: ChatRequest, onChunk: (chunk: ChatStreamChunk) => void): Promise<void> {
     try {
-      const res = await fetch(proxyUrl(), {
+      const res = await fetch(edgeFunctionUrl('chat-proxy'), {
         method: 'POST',
-        headers: authHeaders(),
+        headers: edgeFunctionHeaders(),
         signal: req.signal,
         body: JSON.stringify({
           model: req.model.id,
-          messages: req.messages.map((m) => ({ role: m.role, content: m.content })),
+          messages: req.messages,
+          maxTokens: req.model.capabilities.maxOutputTokens,
         }),
       });
 
@@ -92,35 +52,33 @@ export const openaiChatProvider: ChatProvider = {
           const data = trimmed.slice(5).trim();
           if (data === '[DONE]') {
             if (!receivedAnyDelta) {
-              onChunk({ error: 'The AI service returned an empty reply. Press Retry.' });
+              onChunk({ error: 'The AI service returned an empty reply. Please retry.' });
               return;
             }
             onChunk({ done: true });
             return;
           }
           try {
-            const json = JSON.parse(data);
+            const json = JSON.parse(data) as { choices?: Array<{ delta?: { content?: string } }> };
             const delta = json.choices?.[0]?.delta?.content;
             if (delta) {
               receivedAnyDelta = true;
               onChunk({ delta });
             }
           } catch {
-            // ignore keep-alive / partial frames
+            // Ignore incomplete SSE frames.
           }
         }
       }
 
       if (!receivedAnyDelta) {
-        onChunk({ error: 'The AI service returned an empty reply. Press Retry.' });
+        onChunk({ error: 'The AI service returned an empty reply. Please retry.' });
         return;
       }
       onChunk({ done: true });
     } catch (err) {
       if ((err as Error).name === 'AbortError') return;
-      onChunk({
-        error: 'Could not reach the AI service. Check your internet connection and press Retry.',
-      });
+      onChunk({ error: 'Could not reach the free AI service. Please check your connection and retry.' });
     }
   },
 };

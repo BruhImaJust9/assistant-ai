@@ -1,0 +1,17 @@
+{
+  "projectId": "72612451",
+  "functions": {
+    "chat-proxy": {
+      "hasChanged": false,
+      "hash": "727b4391cfb0b713180d2d9a8fb8f9968339d1330dd8f2cbcc67572b94073d22"
+    },
+    "image-gen": {
+      "hasChanged": false,
+      "hash": "c3fddc0c4aa276379fd5aad2042a8874cf8fc174f3b6ac9e2e45741b38b72c5a"
+    },
+    "web-search": {
+      "hasChanged": false,
+      "hash": "c69b744238daa5033d98bce1f32aa46835e35a17431fe3793dc985016239c223"
+    }
+  }
+}
