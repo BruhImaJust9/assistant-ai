@@ -33,7 +33,7 @@ export const MODELS: ModelConfig[] = [
   {
     id: 'nova-pro',
     name: 'Nova Pro',
-    tagline: 'Fast answers on a free-tier model',
+    tagline: 'Smarter answers on a free-tier model',
     provider: 'groq',
     badge: 'Free tier',
     capabilities: {
@@ -42,7 +42,7 @@ export const MODELS: ModelConfig[] = [
       imageGeneration: false,
       fileAnalysis: true,
       maxOutputTokens: 768,
-      contextWindow: 32_000,
+      contextWindow: 128_000,
     },
   },
   {

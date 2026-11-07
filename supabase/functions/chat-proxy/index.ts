@@ -8,7 +8,7 @@ const corsHeaders = {
 
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 const MODEL_MAP: Record<string, string> = {
-  "nova-pro": "openai/gpt-oss-20b",
+  "nova-pro": "openai/gpt-oss-120b",
   "nova-flash": "openai/gpt-oss-20b",
 };
 
@@ -19,6 +19,19 @@ function json(data: Record<string, unknown>, status = 200): Response {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+async function callGroq(apiKey: string, model: string, messages: unknown[], maxTokens: number, signal: AbortSignal): Promise<Response> {
+  return fetch(GROQ_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify({ model, messages, max_tokens: maxTokens, temperature: 0.2, stream: true }),
+    signal,
+  });
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 Deno.serve(async (req: Request) => {
@@ -42,23 +55,24 @@ Deno.serve(async (req: Request) => {
         .map((message) => ({ role: message.role, content: message.content.slice(0, 6000) })),
     ];
     const maxTokens = Math.min(Math.max(body.maxTokens ?? 512, 128), 768);
+    const groqModel = MODEL_MAP[body.model] ?? MODEL_MAP["nova-flash"];
 
-    const groqRes = await fetch(GROQ_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: MODEL_MAP[body.model] ?? MODEL_MAP["nova-flash"],
-        messages,
-        max_tokens: maxTokens,
-        temperature: 0.2,
-        stream: true,
-      }),
-      signal: req.signal,
-    });
+    let groqRes = await callGroq(apiKey, groqModel, messages, maxTokens, req.signal);
+
+    // Auto-retry once on rate limit after a brief backoff.
+    if (groqRes.status === 429) {
+      const retryAfter = Number(groqRes.headers.get("retry-after")) || 2;
+      await sleep(Math.min(retryAfter * 1000, 4000));
+      groqRes = await callGroq(apiKey, groqModel, messages, maxTokens, req.signal);
+    }
 
     if (!groqRes.ok || !groqRes.body) {
       const text = await groqRes.text().catch(() => "");
-      return json({ error: `Free AI request failed (${groqRes.status}). ${text.slice(0, 240)}` }, groqRes.status);
+      const detail = text.slice(0, 240);
+      if (groqRes.status === 429) {
+        return json({ error: `Groq's free tier is busy right now (rate limit). Please wait a few seconds and retry. ${detail}` }, 429);
+      }
+      return json({ error: `Free AI request failed (${groqRes.status}). ${detail}` }, groqRes.status);
     }
 
     return new Response(groqRes.body, {
