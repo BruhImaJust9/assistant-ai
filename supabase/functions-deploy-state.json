@@ -3,11 +3,11 @@
   "functions": {
     "chat-proxy": {
       "hasChanged": false,
-      "hash": "32201bc7cd56549806d74cf03cd8cf532f4fda124129b90c9bd6430f6bb5102c"
+      "hash": "52e7d7b7567727a83efbbd8e59ec8a42c21e2d9743ce8d509fd26fe613e61c9e"
     },
     "image-gen": {
       "hasChanged": false,
-      "hash": "c3fddc0c4aa276379fd5aad2042a8874cf8fc174f3b6ac9e2e45741b38b72c5a"
+      "hash": "0d48f649eeb1b02ed300932c7bbe908f1e3f913fae08a4d322b3f81c0d2d9c92"
     },
     "web-search": {
       "hasChanged": false,

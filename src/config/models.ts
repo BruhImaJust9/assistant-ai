@@ -61,6 +61,21 @@ export const MODELS: ModelConfig[] = [
     },
   },
   {
+    id: 'nova-lite',
+    name: 'Nova Lite',
+    tagline: 'Ultra-compact fallback to preserve tokens',
+    provider: 'groq',
+    badge: 'Saver',
+    capabilities: {
+      chat: true,
+      webSearch: true,
+      imageGeneration: false,
+      fileAnalysis: true,
+      maxOutputTokens: 256,
+      contextWindow: 8_000,
+    },
+  },
+  {
     id: 'nova-image',
     name: 'Nova Image',
     tagline: 'Local illustration preview with no API cost',

@@ -6,6 +6,7 @@ import { Menu, PanelRightOpen } from 'lucide-react';
 import { AuthProvider } from '@/lib/auth';
 import { StoreProvider, useStore } from '@/store/conversations';
 import { ChatProvider, useChat } from '@/hooks/useChat';
+import { UsageProvider } from '@/hooks/useUsage';
 import { Sidebar } from '@/components/Sidebar';
 import { ChatView } from '@/components/ChatView';
 import { Composer } from '@/components/Composer';
@@ -231,9 +232,11 @@ function App() {
   return (
     <AuthProvider>
       <StoreProvider>
-        <ChatProvider>
-          <NovaShell />
-        </ChatProvider>
+        <UsageProvider>
+          <ChatProvider>
+            <NovaShell />
+          </ChatProvider>
+        </UsageProvider>
       </StoreProvider>
     </AuthProvider>
   );

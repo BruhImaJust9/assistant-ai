@@ -77,8 +77,15 @@ Deno.serve(async (req: Request) => {
     for (const res of responses) {
       if (!res.ok) {
         const text = await res.text().catch(() => "");
+        const detail = text.slice(0, 300);
+        if (res.status === 429 || detail.includes("credit_balance_exhausted") || detail.includes("insufficient_quota")) {
+          return new Response(
+            JSON.stringify({ error: "Image generation is unavailable because the OpenAI billing limit is reached. Add credits at platform.openai.com/settings/organization/billing or switch to Nova Image (local preview) which needs no paid key." }),
+            { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
         return new Response(
-          JSON.stringify({ error: `OpenAI image generation failed (${res.status}). ${text.slice(0, 300)}` }),
+          JSON.stringify({ error: `OpenAI image generation failed (${res.status}). ${detail}` }),
           { status: res.status, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }

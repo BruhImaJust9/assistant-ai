@@ -22,6 +22,7 @@ import type { ModelConfig } from '@/config/models';
 import type { WebSearchResult } from '@/ai/types';
 import { registry } from '@/ai/registry';
 import { useStore } from '@/store/conversations';
+import { useUsage } from '@/hooks/useUsage';
 import { uid } from '@/utils';
 import { extractText } from '@/lib/files';
 import { getModel } from '@/config/models';
@@ -46,6 +47,7 @@ const ChatContext = createContext<ChatContextValue | null>(null);
 
 export function ChatProvider({ children }: { children: ReactNode }) {
   const store = useStore();
+  const usage = useUsage();
   const [isStreaming, setIsStreaming] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -110,6 +112,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         if (tools.includes('web-search')) {
           await store.patchMessage(assistantId, { status: 'streaming' });
           const searchResults = await registry.webSearch().search(text, controller.signal);
+          usage.recordWebSearch();
           const resultsWithAnswer = searchResults as WebSearchResult[] & { answer?: string | null };
           searchAnswer = resultsWithAnswer.answer ?? null;
           citations = searchResults.map((r) => ({
@@ -137,6 +140,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           if (result.error) {
             throw new Error(result.error);
           }
+          usage.recordImageGen();
           const images: GeneratedImage[] = result.images;
           const textPart: MessagePart = {
             type: 'text',
@@ -235,6 +239,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
               if (citations.length) parts.push({ type: 'citations', citations });
               if (accumulated) parts.push({ type: 'text', text: accumulated });
               store.patchMessage(assistantId, { parts, status: 'complete' });
+              const estTokens = Math.ceil(accumulated.length / 4) + Math.ceil(text.length / 4);
+              usage.recordChat(model.id, estTokens);
             }
           },
         );
@@ -250,7 +256,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         abortRef.current = null;
       }
     },
-    [store],
+    [store, usage],
   );
 
   const regenerate = useCallback(
