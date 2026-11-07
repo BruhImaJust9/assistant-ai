@@ -269,7 +269,9 @@ export function Composer({
         </div>
       </div>
       <p className="mx-auto mt-1.5 max-w-3xl px-2 text-center text-2xs text-ink-400">
-        Nova can make mistakes. Verify important information.
+        {text.trim().length > 0
+          ? `${text.length} chars · ${text.trim().split(/\s+/).filter(Boolean).length} words`
+          : 'Nova can make mistakes. Verify important information.'}
       </p>
     </div>
   );

@@ -1,10 +1,10 @@
 // Settings modal — preferences, service status, API key management, usage dashboard.
 
 import { useState } from 'react';
-import { Zap, Keyboard, Key, Check, BarChart3, RotateCcw, AlertCircle, ImageIcon, Globe } from 'lucide-react';
+import { Zap, Keyboard, Key, Check, BarChart3, RotateCcw, AlertCircle, ImageIcon, Globe, Download, Bell } from 'lucide-react';
 import { Modal, Toggle, Badge } from '@/components/ui';
 import { getAvailableModels, getDefaultModelId } from '@/config/models';
-import { useUsage, USAGE_TOKEN_BUDGET } from '@/hooks/useUsage';
+import { useUsage } from '@/hooks/useUsage';
 
 interface SettingsModalProps {
   open: boolean;
@@ -17,6 +17,8 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
   const [webSearchDefault, setWebSearchDefault] = useState(false);
   const [defaultModel, setDefaultModel] = useState(getDefaultModelId());
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [budgetInput, setBudgetInput] = useState('');
+  const [thresholdInput, setThresholdInput] = useState('');
   const models = getAvailableModels();
   const usage = useUsage();
 
@@ -26,8 +28,25 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
     setTimeout(() => setCopiedKey(null), 1600);
   };
 
-  const tokenPct = Math.min(Math.round((usage.totalEstimatedTokens / USAGE_TOKEN_BUDGET) * 100), 100);
-  const budgetRemaining = Math.max(USAGE_TOKEN_BUDGET - usage.totalEstimatedTokens, 0);
+  const tokenPct = Math.min(Math.round((usage.totalEstimatedTokens / usage.tokenBudget) * 100), 100);
+  const budgetRemaining = Math.max(usage.tokenBudget - usage.totalEstimatedTokens, 0);
+  const isLowBalance = tokenPct >= usage.alertThreshold && !usage.alertDismissed;
+
+  const applyBudget = () => {
+    const n = parseInt(budgetInput, 10);
+    if (!isNaN(n) && n > 0) {
+      usage.setTokenBudget(n);
+      setBudgetInput('');
+    }
+  };
+
+  const applyThreshold = () => {
+    const n = parseInt(thresholdInput, 10);
+    if (!isNaN(n) && n >= 10 && n <= 95) {
+      usage.setAlertThreshold(n);
+      setThresholdInput('');
+    }
+  };
 
   return (
     <Modal open={open} onClose={onClose} title="Settings" width="lg">
@@ -38,12 +57,24 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
             <BarChart3 size={13} /> Usage Dashboard
           </div>
           <div className="rounded-lg border border-white/[0.07] bg-ink-850/60 p-3.5 space-y-3">
+            {/* Low balance alert */}
+            {isLowBalance && (
+              <div className="flex items-start gap-2 rounded-lg border border-warning-500/30 bg-warning-500/10 px-3 py-2.5 text-sm text-warning-400">
+                <Bell size={14} className="mt-0.5 shrink-0" />
+                <div className="flex-1">
+                  <p className="font-medium">Low balance alert</p>
+                  <p className="mt-0.5 text-2xs text-warning-400/80">You've used {tokenPct}% of your token budget. Consider switching to Nova Lite to conserve tokens.</p>
+                </div>
+                <button type="button" onClick={usage.dismissAlert} className="text-2xs text-warning-400/60 hover:text-warning-400">Dismiss</button>
+              </div>
+            )}
+
             {/* Token budget bar */}
             <div>
               <div className="mb-1.5 flex items-center justify-between">
                 <span className="text-sm font-medium text-ink-100">Token budget</span>
                 <span className="text-2xs text-ink-400">
-                  {usage.totalEstimatedTokens.toLocaleString()} / {USAGE_TOKEN_BUDGET.toLocaleString()}
+                  {usage.totalEstimatedTokens.toLocaleString()} / {usage.tokenBudget.toLocaleString()}
                 </span>
               </div>
               <div className="h-2 overflow-hidden rounded-full bg-ink-700">
@@ -53,6 +84,38 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
                 />
               </div>
               <p className="mt-1 text-2xs text-ink-400">{budgetRemaining.toLocaleString()} tokens remaining</p>
+            </div>
+
+            {/* Custom budget + alert threshold */}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-lg border border-white/[0.06] bg-ink-900/40 p-2.5">
+                <p className="mb-1.5 text-2xs font-semibold uppercase tracking-wider text-ink-400">Custom budget</p>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="number"
+                    value={budgetInput}
+                    onChange={(e) => setBudgetInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && applyBudget()}
+                    placeholder={usage.tokenBudget.toLocaleString()}
+                    className="w-full rounded-md bg-ink-950/60 px-2 py-1 text-2xs text-ink-100 outline-none focus:ring-1 focus:ring-brand-400/40"
+                  />
+                  <button type="button" onClick={applyBudget} className="rounded-md bg-white/[0.06] px-2 py-1 text-2xs font-medium text-ink-200 hover:bg-white/[0.1]">Set</button>
+                </div>
+              </div>
+              <div className="rounded-lg border border-white/[0.06] bg-ink-900/40 p-2.5">
+                <p className="mb-1.5 text-2xs font-semibold uppercase tracking-wider text-ink-400">Alert at %</p>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="number"
+                    value={thresholdInput}
+                    onChange={(e) => setThresholdInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && applyThreshold()}
+                    placeholder={`${usage.alertThreshold}%`}
+                    className="w-full rounded-md bg-ink-950/60 px-2 py-1 text-2xs text-ink-100 outline-none focus:ring-1 focus:ring-brand-400/40"
+                  />
+                  <button type="button" onClick={applyThreshold} className="rounded-md bg-white/[0.06] px-2 py-1 text-2xs font-medium text-ink-200 hover:bg-white/[0.1]">Set</button>
+                </div>
+              </div>
             </div>
 
             {/* Stats grid */}
@@ -75,15 +138,20 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
               </div>
             )}
 
+            {/* Export + reset */}
             <div className="flex items-center justify-between pt-1">
               <p className="text-2xs text-ink-400">Since {new Date(usage.lastReset).toLocaleDateString()}</p>
-              <button
-                type="button"
-                onClick={usage.reset}
-                className="inline-flex items-center gap-1 rounded-md bg-white/[0.06] px-2 py-1 text-2xs font-medium text-ink-200 hover:bg-white/[0.1]"
-              >
-                <RotateCcw size={11} /> Reset
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button type="button" onClick={usage.exportCSV} className="inline-flex items-center gap-1 rounded-md bg-white/[0.06] px-2 py-1 text-2xs font-medium text-ink-200 hover:bg-white/[0.1]">
+                  <Download size={11} /> CSV
+                </button>
+                <button type="button" onClick={usage.exportJSON} className="inline-flex items-center gap-1 rounded-md bg-white/[0.06] px-2 py-1 text-2xs font-medium text-ink-200 hover:bg-white/[0.1]">
+                  <Download size={11} /> JSON
+                </button>
+                <button type="button" onClick={usage.reset} className="inline-flex items-center gap-1 rounded-md bg-white/[0.06] px-2 py-1 text-2xs font-medium text-ink-200 hover:bg-white/[0.1]">
+                  <RotateCcw size={11} /> Reset
+                </button>
+              </div>
             </div>
           </div>
         </section>
@@ -110,39 +178,9 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
               Keys are stored securely on the Supabase server and never sent to the browser. Copy a key name, then add it in your Supabase project's Edge Function Secrets.
             </p>
 
-            {/* Groq key */}
-            <KeyRow
-              name="GROQ_API_KEY"
-              label="Groq chat"
-              badge="Free tier"
-              badgeVariant="success"
-              description="Powers all chat and fallback responses."
-              copied={copiedKey === 'GROQ_API_KEY'}
-              onCopy={() => copyKeyName('GROQ_API_KEY')}
-            />
-
-            {/* OpenAI key */}
-            <KeyRow
-              name="OPENAI_API_KEY"
-              label="OpenAI images"
-              badge="Paid"
-              badgeVariant="warning"
-              description="Powers DALL-E 3 image generation. Optional — Nova Image (local) works without it."
-              copied={copiedKey === 'OPENAI_API_KEY'}
-              onCopy={() => copyKeyName('OPENAI_API_KEY')}
-              warning="If image generation reports no credits, add billing at platform.openai.com or use Nova Image (local) instead."
-            />
-
-            {/* Tavily key */}
-            <KeyRow
-              name="TAVILY_API_KEY"
-              label="Tavily web search"
-              badge="Free tier"
-              badgeVariant="success"
-              description="Powers web search results."
-              copied={copiedKey === 'TAVILY_API_KEY'}
-              onCopy={() => copyKeyName('TAVILY_API_KEY')}
-            />
+            <KeyRow name="GROQ_API_KEY" label="Groq chat" badge="Free tier" badgeVariant="success" description="Powers all chat and fallback responses." copied={copiedKey === 'GROQ_API_KEY'} onCopy={() => copyKeyName('GROQ_API_KEY')} />
+            <KeyRow name="OPENAI_API_KEY" label="OpenAI images" badge="Paid" badgeVariant="warning" description="Powers DALL-E 3 image generation. Optional — Nova Image (local) works without it." copied={copiedKey === 'OPENAI_API_KEY'} onCopy={() => copyKeyName('OPENAI_API_KEY')} warning="If image generation reports no credits, add billing at platform.openai.com or use Nova Image (local) instead." />
+            <KeyRow name="TAVILY_API_KEY" label="Tavily web search" badge="Free tier" badgeVariant="success" description="Powers web search results." copied={copiedKey === 'TAVILY_API_KEY'} onCopy={() => copyKeyName('TAVILY_API_KEY')} />
           </div>
         </section>
 

@@ -1,5 +1,5 @@
 // Lightweight usage tracking — persists to localStorage so it survives reloads.
-// Tracks message counts, estimated tokens, and per-model usage.
+// Tracks message counts, estimated tokens, per-model usage, custom budget, and alerts.
 
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 
@@ -15,6 +15,9 @@ interface UsageState {
   totalMessages: number;
   totalEstimatedTokens: number;
   lastReset: string;
+  tokenBudget: number;
+  alertThreshold: number;
+  alertDismissed: boolean;
 }
 
 interface UsageContextValue extends UsageState {
@@ -22,10 +25,16 @@ interface UsageContextValue extends UsageState {
   recordImageGen: () => void;
   recordWebSearch: () => void;
   reset: () => void;
+  setTokenBudget: (budget: number) => void;
+  setAlertThreshold: (threshold: number) => void;
+  dismissAlert: () => void;
+  exportCSV: () => void;
+  exportJSON: () => void;
 }
 
 const STORAGE_KEY = 'nova-usage-v1';
-const TOKEN_BUDGET = 100_000;
+const DEFAULT_BUDGET = 100_000;
+const DEFAULT_ALERT_THRESHOLD = 80;
 
 const emptyState: UsageState = {
   models: {},
@@ -34,13 +43,16 @@ const emptyState: UsageState = {
   totalMessages: 0,
   totalEstimatedTokens: 0,
   lastReset: new Date().toISOString(),
+  tokenBudget: DEFAULT_BUDGET,
+  alertThreshold: DEFAULT_ALERT_THRESHOLD,
+  alertDismissed: false,
 };
 
 function loadState(): UsageState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return emptyState;
-    const parsed = JSON.parse(raw) as UsageState;
+    const parsed = JSON.parse(raw) as Partial<UsageState>;
     return { ...emptyState, ...parsed };
   } catch {
     return emptyState;
@@ -49,20 +61,19 @@ function loadState(): UsageState {
 
 const UsageContext = createContext<UsageContextValue | null>(null);
 
+function persistState(next: UsageState) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  } catch {
+    // Storage may be unavailable in private mode — state stays in-memory.
+  }
+}
+
 export function UsageProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<UsageState>(emptyState);
 
   useEffect(() => {
     setState(loadState());
-  }, []);
-
-  const persist = useCallback((next: UsageState) => {
-    setState(next);
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    } catch {
-      // Storage may be unavailable in private mode — state stays in-memory.
-    }
   }, []);
 
   const recordChat = useCallback(
@@ -80,12 +91,9 @@ export function UsageProvider({ children }: { children: ReactNode }) {
           },
           totalMessages: prev.totalMessages + 1,
           totalEstimatedTokens: prev.totalEstimatedTokens + estimatedTokens,
+          alertDismissed: false,
         };
-        try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-        } catch {
-          // In-memory only if storage fails.
-        }
+        persistState(next);
         return next;
       });
     },
@@ -95,11 +103,7 @@ export function UsageProvider({ children }: { children: ReactNode }) {
   const recordImageGen = useCallback(() => {
     setState((prev) => {
       const next = { ...prev, imageGens: prev.imageGens + 1 };
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      } catch {
-        // In-memory only.
-      }
+      persistState(next);
       return next;
     });
   }, []);
@@ -107,23 +111,90 @@ export function UsageProvider({ children }: { children: ReactNode }) {
   const recordWebSearch = useCallback(() => {
     setState((prev) => {
       const next = { ...prev, webSearches: prev.webSearches + 1 };
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      } catch {
-        // In-memory only.
-      }
+      persistState(next);
       return next;
     });
   }, []);
 
   const reset = useCallback(() => {
-    const next = { ...emptyState, lastReset: new Date().toISOString() };
-    persist(next);
-  }, [persist]);
+    const next = { ...emptyState, tokenBudget: state.tokenBudget, alertThreshold: state.alertThreshold, lastReset: new Date().toISOString() };
+    setState(next);
+    persistState(next);
+  }, [state.tokenBudget, state.alertThreshold]);
 
-  const value: UsageContextValue = { ...state, recordChat, recordImageGen, recordWebSearch, reset };
+  const setTokenBudget = useCallback((budget: number) => {
+    setState((prev) => {
+      const next = { ...prev, tokenBudget: Math.max(budget, 1000), alertDismissed: false };
+      persistState(next);
+      return next;
+    });
+  }, []);
+
+  const setAlertThreshold = useCallback((threshold: number) => {
+    setState((prev) => {
+      const next = { ...prev, alertThreshold: Math.min(Math.max(threshold, 10), 95), alertDismissed: false };
+      persistState(next);
+      return next;
+    });
+  }, []);
+
+  const dismissAlert = useCallback(() => {
+    setState((prev) => {
+      const next = { ...prev, alertDismissed: true };
+      persistState(next);
+      return next;
+    });
+  }, []);
+
+  const exportJSON = useCallback(() => {
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      ...state,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    downloadBlob(blob, `nova-usage-${Date.now()}.json`);
+  }, [state]);
+
+  const exportCSV = useCallback(() => {
+    const rows = ['Model,Messages,Estimated Tokens'];
+    for (const [modelId, data] of Object.entries(state.models)) {
+      rows.push(`${modelId},${data.messages},${data.estimatedTokens}`);
+    }
+    rows.push('');
+    rows.push(`Summary,,,`);
+    rows.push(`Total Messages,,${state.totalMessages}`);
+    rows.push(`Total Tokens,,${state.totalEstimatedTokens}`);
+    rows.push(`Web Searches,,${state.webSearches}`);
+    rows.push(`Image Gens,,${state.imageGens}`);
+    rows.push(`Token Budget,,${state.tokenBudget}`);
+    rows.push(`Last Reset,,${state.lastReset}`);
+    const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
+    downloadBlob(blob, `nova-usage-${Date.now()}.csv`);
+  }, [state]);
+
+  const value: UsageContextValue = {
+    ...state,
+    recordChat,
+    recordImageGen,
+    recordWebSearch,
+    reset,
+    setTokenBudget,
+    setAlertThreshold,
+    dismissAlert,
+    exportCSV,
+    exportJSON,
+  };
 
   return <UsageContext.Provider value={value}>{children}</UsageContext.Provider>;
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 export function useUsage(): UsageContextValue {
@@ -132,4 +203,4 @@ export function useUsage(): UsageContextValue {
   return ctx;
 }
 
-export const USAGE_TOKEN_BUDGET = TOKEN_BUDGET;
+export const USAGE_TOKEN_BUDGET = DEFAULT_BUDGET;

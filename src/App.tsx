@@ -187,7 +187,7 @@ function NovaShell() {
         </header>
 
         {/* Chat area */}
-        <div className="min-h-0 flex-1">
+        <div className="relative min-h-0 flex-1">
           <ChatView
             onSuggestion={handleSuggestion}
             onEditMessage={handleStartEdit}

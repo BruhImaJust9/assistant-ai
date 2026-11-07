@@ -1,6 +1,7 @@
 // Center conversation view — renders messages, empty state, and streaming.
 
 import { useEffect, useRef, useState } from 'react';
+import { ArrowDown } from 'lucide-react';
 import { useStore } from '@/store/conversations';
 import { MessageItem, EditableUserMessage } from '@/components/MessageItem';
 import { EmptyState } from '@/components/EmptyState';
@@ -19,8 +20,8 @@ export function ChatView({ onSuggestion, onEditMessage, onCancelEdit, onSaveEdit
   const { activeConversation, activeMessages, loadingMessages } = useStore();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
+  const [showScrollBtn, setShowScrollBtn] = useState(false);
 
-  // Auto-scroll on new content if the user is near the bottom.
   useEffect(() => {
     if (!autoScroll) return;
     const el = scrollRef.current;
@@ -33,6 +34,15 @@ export function ChatView({ onSuggestion, onEditMessage, onCancelEdit, onSaveEdit
     if (!el) return;
     const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
     setAutoScroll(nearBottom);
+    setShowScrollBtn(!nearBottom && activeMessages.length > 4);
+  };
+
+  const scrollToBottom = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    setAutoScroll(true);
+    setShowScrollBtn(false);
   };
 
   if (!activeConversation) {
@@ -87,6 +97,19 @@ export function ChatView({ onSuggestion, onEditMessage, onCancelEdit, onSaveEdit
           </div>
         )}
       </div>
+
+      {/* Scroll-to-bottom button */}
+      {showScrollBtn && (
+        <div className="absolute bottom-32 left-1/2 z-10 -translate-x-1/2">
+          <button
+            type="button"
+            onClick={scrollToBottom}
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-ink-800 border border-white/[0.1] text-ink-200 shadow-panel transition-all hover:bg-ink-700 hover:text-white animate-fade-in"
+          >
+            <ArrowDown size={16} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

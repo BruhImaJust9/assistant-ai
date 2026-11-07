@@ -1,7 +1,7 @@
 // A single message in the conversation, with role styling and actions.
 
 import { useState } from 'react';
-import { Copy, Check, RefreshCw, Pencil, TriangleAlert as AlertTriangle, WifiOff, Gauge, X } from 'lucide-react';
+import { Copy, Check, RefreshCw, Pencil, TriangleAlert as AlertTriangle, WifiOff, Gauge, X, ThumbsUp, ThumbsDown } from 'lucide-react';
 import type { Message } from '@/types';
 import { Markdown } from '@/components/Markdown';
 import { Citations } from '@/components/Citations';
@@ -23,6 +23,7 @@ export function MessageItem({ message, onEdit }: MessageItemProps) {
   const { regenerate, isStreaming } = useChat();
   const { patchMessage } = useStore();
   const [copied, setCopied] = useState(false);
+  const [reaction, setReaction] = useState<'up' | 'down' | null>(null);
   const isUser = message.role === 'user';
   const isAssistant = message.role === 'assistant';
   const model = message.modelId ? getModel(message.modelId) : undefined;
@@ -176,6 +177,28 @@ export function MessageItem({ message, onEdit }: MessageItemProps) {
                   onClick={handleRegenerate}
                 />
               </Tooltip>
+            )}
+            {isAssistant && (
+              <>
+                <Tooltip label={reaction === 'up' ? 'Helpful' : 'Mark helpful'}>
+                  <IconButton
+                    icon={<ThumbsUp size={14} />}
+                    label="Helpful"
+                    size="sm"
+                    active={reaction === 'up'}
+                    onClick={() => setReaction(reaction === 'up' ? null : 'up')}
+                  />
+                </Tooltip>
+                <Tooltip label={reaction === 'down' ? 'Not helpful' : 'Mark not helpful'}>
+                  <IconButton
+                    icon={<ThumbsDown size={14} />}
+                    label="Not helpful"
+                    size="sm"
+                    active={reaction === 'down'}
+                    onClick={() => setReaction(reaction === 'down' ? null : 'down')}
+                  />
+                </Tooltip>
+              </>
             )}
             {isUser && onEdit && (
               <Tooltip label="Edit">
