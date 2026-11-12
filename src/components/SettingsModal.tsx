@@ -5,6 +5,9 @@ import { Zap, Keyboard, Key, Check, BarChart3, RotateCcw, AlertCircle, ImageIcon
 import { Modal, Toggle, Badge } from '@/components/ui';
 import { getAvailableModels, getDefaultModelId } from '@/config/models';
 import { useUsage } from '@/hooks/useUsage';
+import { UsageLogPanel } from '@/components/UsageLogPanel';
+
+const BUDGET_PRESETS = [50_000, 100_000, 250_000, 500_000, 1_000_000];
 
 interface SettingsModalProps {
   open: boolean;
@@ -86,6 +89,20 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
               <p className="mt-1 text-2xs text-ink-400">{budgetRemaining.toLocaleString()} tokens remaining</p>
             </div>
 
+            {/* Budget presets */}
+            <div className="flex flex-wrap gap-1.5">
+              {BUDGET_PRESETS.map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => usage.setTokenBudget(preset)}
+                  className={`rounded-full px-2.5 py-1 text-2xs font-medium transition-colors ${usage.tokenBudget === preset ? 'bg-brand-500/20 text-brand-300' : 'bg-white/[0.06] text-ink-200 hover:bg-white/[0.1]'}`}
+                >
+                  {preset >= 1_000_000 ? '1M' : `${preset / 1000}K`}
+                </button>
+              ))}
+            </div>
+
             {/* Custom budget + alert threshold */}
             <div className="grid grid-cols-2 gap-2">
               <div className="rounded-lg border border-white/[0.06] bg-ink-900/40 p-2.5">
@@ -155,6 +172,9 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
             </div>
           </div>
         </section>
+
+        {/* Reactions & Logs */}
+        <UsageLogPanel />
 
         {/* Default Model */}
         <section>

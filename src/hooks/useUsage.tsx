@@ -2,6 +2,7 @@
 // Tracks message counts, estimated tokens, per-model usage, custom budget, and alerts.
 
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import { logUsageEvent } from '@/lib/usageLog';
 
 interface ModelUsage {
   messages: number;
@@ -24,6 +25,7 @@ interface UsageContextValue extends UsageState {
   recordChat: (modelId: string, estimatedTokens: number) => void;
   recordImageGen: () => void;
   recordWebSearch: () => void;
+  recordReaction: (messageId: string, modelId: string | null, reaction: 'up' | 'down') => void;
   reset: () => void;
   setTokenBudget: (budget: number) => void;
   setAlertThreshold: (threshold: number) => void;
@@ -78,6 +80,7 @@ export function UsageProvider({ children }: { children: ReactNode }) {
 
   const recordChat = useCallback(
     (modelId: string, estimatedTokens: number) => {
+      void logUsageEvent({ kind: 'chat', model_id: modelId, tokens: estimatedTokens, reaction: null, message_id: null });
       setState((prev) => {
         const modelUsage = prev.models[modelId] ?? { messages: 0, estimatedTokens: 0 };
         const next: UsageState = {
@@ -101,6 +104,7 @@ export function UsageProvider({ children }: { children: ReactNode }) {
   );
 
   const recordImageGen = useCallback(() => {
+    void logUsageEvent({ kind: 'image', model_id: null, tokens: 0, reaction: null, message_id: null });
     setState((prev) => {
       const next = { ...prev, imageGens: prev.imageGens + 1 };
       persistState(next);
@@ -109,11 +113,16 @@ export function UsageProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const recordWebSearch = useCallback(() => {
+    void logUsageEvent({ kind: 'web_search', model_id: null, tokens: 0, reaction: null, message_id: null });
     setState((prev) => {
       const next = { ...prev, webSearches: prev.webSearches + 1 };
       persistState(next);
       return next;
     });
+  }, []);
+
+  const recordReaction = useCallback((messageId: string, modelId: string | null, reaction: 'up' | 'down') => {
+    void logUsageEvent({ kind: 'reaction', model_id: modelId, tokens: 0, reaction, message_id: messageId });
   }, []);
 
   const reset = useCallback(() => {
@@ -177,6 +186,7 @@ export function UsageProvider({ children }: { children: ReactNode }) {
     recordChat,
     recordImageGen,
     recordWebSearch,
+    recordReaction,
     reset,
     setTokenBudget,
     setAlertThreshold,

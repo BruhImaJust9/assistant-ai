@@ -33,6 +33,7 @@ export const Markdown = memo(function Markdown({ content }: MarkdownProps) {
 
 function CodeBlock({ children }: { children: ReactNode }) {
   const [copied, setCopied] = useState(false);
+  const language = findLanguage(children);
 
   const handleCopy = () => {
     // Extract text from the rendered <code> child.
@@ -45,6 +46,11 @@ function CodeBlock({ children }: { children: ReactNode }) {
 
   return (
     <div className="group relative my-4 overflow-hidden rounded-xl border border-white/[0.08] bg-ink-950/60">
+      {language && (
+        <span className="absolute left-3 top-2 z-10 rounded-md bg-brand-500/15 px-2 py-0.5 font-mono text-2xs font-medium uppercase tracking-wider text-brand-300">
+          {language}
+        </span>
+      )}
       <div className="absolute right-2 top-2 z-10 opacity-0 transition-opacity group-hover:opacity-100">
         <button
           type="button"
@@ -55,11 +61,28 @@ function CodeBlock({ children }: { children: ReactNode }) {
           {copied ? 'Copied' : 'Copy'}
         </button>
       </div>
-      <pre className="overflow-x-auto p-4 text-[0.85rem] leading-relaxed font-mono">
+      <pre className="overflow-x-auto p-4 pt-9 text-[0.85rem] leading-relaxed font-mono">
         {children}
       </pre>
     </div>
   );
+}
+
+function findLanguage(node: ReactNode): string | null {
+  if (Array.isArray(node)) {
+    for (const child of node) {
+      const found = findLanguage(child);
+      if (found) return found;
+    }
+    return null;
+  }
+  if (node && typeof node === 'object' && 'props' in node) {
+    const props = (node as { props: { className?: string; children?: ReactNode } }).props;
+    const match = props.className?.match(/language-([\w+#-]+)/);
+    if (match) return match[1];
+    return findLanguage(props.children);
+  }
+  return null;
 }
 
 function extractText(node: ReactNode): string {

@@ -11,6 +11,7 @@ import { IconButton, Tooltip } from '@/components/ui';
 import { cx } from '@/utils';
 import { useStore } from '@/store/conversations';
 import { useChat } from '@/hooks/useChat';
+import { useUsage } from '@/hooks/useUsage';
 import { getModel } from '@/config/models';
 
 interface MessageItemProps {
@@ -22,6 +23,7 @@ interface MessageItemProps {
 export function MessageItem({ message, onEdit }: MessageItemProps) {
   const { regenerate, isStreaming } = useChat();
   const { patchMessage } = useStore();
+  const usage = useUsage();
   const [copied, setCopied] = useState(false);
   const [reaction, setReaction] = useState<'up' | 'down' | null>(null);
   const isUser = message.role === 'user';
@@ -186,7 +188,11 @@ export function MessageItem({ message, onEdit }: MessageItemProps) {
                     label="Helpful"
                     size="sm"
                     active={reaction === 'up'}
-                    onClick={() => setReaction(reaction === 'up' ? null : 'up')}
+                    onClick={() => {
+                      const next = reaction === 'up' ? null : 'up';
+                      setReaction(next);
+                      if (next) usage.recordReaction(message.id, message.modelId ?? null, next);
+                    }}
                   />
                 </Tooltip>
                 <Tooltip label={reaction === 'down' ? 'Not helpful' : 'Mark not helpful'}>
@@ -195,7 +201,11 @@ export function MessageItem({ message, onEdit }: MessageItemProps) {
                     label="Not helpful"
                     size="sm"
                     active={reaction === 'down'}
-                    onClick={() => setReaction(reaction === 'down' ? null : 'down')}
+                    onClick={() => {
+                      const next = reaction === 'down' ? null : 'down';
+                      setReaction(next);
+                      if (next) usage.recordReaction(message.id, message.modelId ?? null, next);
+                    }}
                   />
                 </Tooltip>
               </>
