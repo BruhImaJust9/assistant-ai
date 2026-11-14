@@ -1,7 +1,7 @@
 // Settings modal — preferences, service status, API key management, usage dashboard.
 
 import { useState } from 'react';
-import { Zap, Keyboard, Key, Check, BarChart3, RotateCcw, AlertCircle, ImageIcon, Globe, Download, Bell } from 'lucide-react';
+import { Zap, Keyboard, Key, Check, BarChart3, RotateCcw, AlertCircle, ImageIcon, Globe, Download } from 'lucide-react';
 import { Modal, Toggle, Badge } from '@/components/ui';
 import { getAvailableModels, getDefaultModelId } from '@/config/models';
 import { useUsage } from '@/hooks/useUsage';
@@ -33,7 +33,6 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
 
   const tokenPct = Math.min(Math.round((usage.totalEstimatedTokens / usage.tokenBudget) * 100), 100);
   const budgetRemaining = Math.max(usage.tokenBudget - usage.totalEstimatedTokens, 0);
-  const isLowBalance = tokenPct >= usage.alertThreshold && !usage.alertDismissed;
 
   const applyBudget = () => {
     const n = parseInt(budgetInput, 10);
@@ -60,17 +59,6 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
             <BarChart3 size={13} /> Usage Dashboard
           </div>
           <div className="rounded-lg border border-white/[0.07] bg-ink-850/60 p-3.5 space-y-3">
-            {/* Low balance alert */}
-            {isLowBalance && (
-              <div className="flex items-start gap-2 rounded-lg border border-warning-500/30 bg-warning-500/10 px-3 py-2.5 text-sm text-warning-400">
-                <Bell size={14} className="mt-0.5 shrink-0" />
-                <div className="flex-1">
-                  <p className="font-medium">Low balance alert</p>
-                  <p className="mt-0.5 text-2xs text-warning-400/80">You've used {tokenPct}% of your token budget. Consider switching to Nova Lite to conserve tokens.</p>
-                </div>
-                <button type="button" onClick={usage.dismissAlert} className="text-2xs text-warning-400/60 hover:text-warning-400">Dismiss</button>
-              </div>
-            )}
 
             {/* Token budget bar */}
             <div>

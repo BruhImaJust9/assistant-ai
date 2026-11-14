@@ -11,6 +11,7 @@ import {
   type UsageKind,
   type UsageLogFilters,
 } from '@/lib/usageLog';
+import { UsageChart } from '@/components/UsageChart';
 
 const KIND_OPTIONS: { value: UsageKind | 'all'; label: string }[] = [
   { value: 'all', label: 'All events' },
@@ -128,6 +129,8 @@ export function UsageLogPanel() {
             <p className="text-lg font-semibold text-white">{analytics.helpfulRate === null ? '—' : `${analytics.helpfulRate}%`}</p>
           </div>
         </div>
+
+        <UsageChart events={events} />
 
         {analytics.rows.length > 0 && (
           <div className="space-y-1.5">

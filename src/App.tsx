@@ -13,6 +13,7 @@ import { Composer } from '@/components/Composer';
 import { ToolsPanel } from '@/components/ToolsPanel';
 import { SettingsModal } from '@/components/SettingsModal';
 import { IconButton, Tooltip } from '@/components/ui';
+import { BudgetBanner } from '@/components/BudgetBanner';
 import { getModel, getDefaultModelId } from '@/config/models';
 import type { FileAttachment, ToolKind } from '@/types';
 
@@ -185,6 +186,8 @@ function NovaShell() {
             )}
           </div>
         </header>
+
+        <BudgetBanner onViewUsage={() => setSettingsOpen(true)} />
 
         {/* Chat area */}
         <div className="relative min-h-0 flex-1">
